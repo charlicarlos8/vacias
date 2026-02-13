@@ -18,7 +18,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // Componentes de iconos Inline SVG (Lucide-like)
+        // Componentes de iconos Inline SVG
         const IconUpload = () => (
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         );
@@ -45,7 +45,7 @@
             const [libLoaded, setLibLoaded] = useState(false);
             const [error, setError] = useState(null);
             const [fileName, setFileName] = useState('');
-            const [selectedRack, setSelectedRack] = useState('01');
+            const [selectedPairStart, setSelectedPairStart] = useState(1);
             const [searchTerm, setSearchTerm] = useState('');
 
             const TOTAL_RACKS = 20;
@@ -67,7 +67,7 @@
                 script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
                 script.async = true;
                 script.onload = () => setLibLoaded(true);
-                script.onerror = () => setError('Error al cargar SheetJS.');
+                script.onerror = () => setError('Error al cargar la librería de Excel.');
                 document.head.appendChild(script);
             }, []);
 
@@ -122,11 +122,12 @@
                 return `${rackStr}${row}${colStr}${depth}`;
             };
 
-            const rackStats = useMemo(() => {
-                const rackEmpty = Array.from(emptyLocations).filter(loc => loc.startsWith(selectedRack)).length;
-                const rackBlocked = Array.from(blockedLocations).filter(loc => loc.startsWith(selectedRack)).length;
+            const getRackStats = (rackNum) => {
+                const rackStr = String(rackNum).padStart(2, '0');
+                const rackEmpty = Array.from(emptyLocations).filter(loc => loc.startsWith(rackStr)).length;
+                const rackBlocked = Array.from(blockedLocations).filter(loc => loc.startsWith(rackStr)).length;
                 return { rackEmpty, rackBlocked };
-            }, [emptyLocations, blockedLocations, selectedRack]);
+            };
 
             const handlePrint = () => window.print();
 
@@ -139,13 +140,13 @@
                 );
             }
 
+            const currentRacks = [selectedPairStart, selectedPairStart + 1];
+
             return (
                 <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-10">
                     <style>{`
-                        /* Ajustes de visualización en pantalla */
                         .matrix-grid-container {
                             display: flex;
-                            flex-direction: row-reverse;
                             width: 100%;
                             gap: 2px;
                         }
@@ -166,11 +167,11 @@
                             border: 1px solid transparent;
                         }
 
-                        /* Formato optimizado para impresión tamaño carta */
+                        /* Estilos de Impresión Optimizados y Centrados */
                         @media print {
                             @page { 
                                 size: letter landscape; 
-                                margin: 2mm; 
+                                margin: 0; /* Controlamos márgenes con el body */
                             }
                             header, .no-print, .legend-section, .summary-section, .floating-status, .upload-label, .search-section, button { 
                                 display: none !important; 
@@ -179,53 +180,55 @@
                                 background-color: white !important; 
                                 margin: 0 !important;
                                 padding: 0 !important;
+                                display: flex !important;
+                                flex-direction: column !important;
+                                align-items: center !important;
+                                justify-content: center !important;
+                                min-height: 100vh !important;
+                                height: 100vh !important;
                             }
                             main {
                                 margin: 0 !important;
-                                padding: 0 !important;
-                                width: 100vw !important;
-                                max-width: none !important;
+                                padding: 5mm !important;
+                                width: 100% !important;
+                                display: flex !important;
+                                flex-direction: column !important;
+                                justify-content: center !important;
                             }
                             .matrix-container { 
                                 border: none !important;
+                                border-bottom: 1pt dashed #ccc !important;
                                 border-radius: 0 !important; 
                                 box-shadow: none !important;
                                 width: 100% !important;
-                                margin: 0 !important;
+                                margin-bottom: 5mm !important;
                                 page-break-inside: avoid;
                             }
                             .matrix-header { 
-                                background-color: #1e293b !important; 
-                                color: white !important; 
-                                padding: 8px !important;
-                                border-bottom: 2px solid #000 !important;
+                                background-color: #f8fafc !important; 
+                                color: #1e293b !important; 
+                                padding: 4px !important;
+                                border: 1pt solid #1e293b !important;
                                 -webkit-print-color-adjust: exact; 
                                 print-color-adjust: exact;
                             }
-                            .matrix-grid-container {
-                                gap: 1px !important;
-                            }
-                            .matrix-column {
-                                gap: 1px !important;
-                            }
-                            .matrix-slot {
-                                border-radius: 0 !important;
-                                border: 0.1pt solid #ddd !important;
-                            }
+                            .matrix-grid-container { gap: 1px !important; }
+                            .matrix-column { gap: 1px !important; }
+                            .matrix-slot { border-radius: 0 !important; border: 0.1pt solid #eee !important; }
+                            
                             .slot-occupied { 
-                                background-color: #1e293b !important; 
+                                background-color: #f1f5f9 !important; /* Gris más tenue para impresión */
                                 -webkit-print-color-adjust: exact; 
                                 print-color-adjust: exact;
                             }
                             .slot-blocked { 
-                                background-color: #dc2626 !important; 
+                                background-color: #fee2e2 !important;
+                                border: 1pt solid #dc2626 !important;
                                 -webkit-print-color-adjust: exact; 
                                 print-color-adjust: exact;
                             }
-                            /* Ajuste de fuentes para impresión compacta */
-                            .slot-text-rack { font-size: 7pt !important; }
-                            .slot-text-pos { font-size: 7pt !important; }
-                            .row-label-text { font-size: 6pt !important; width: 45pt !important; }
+                            .slot-text-rack, .slot-text-pos { font-size: 6.5pt !important; font-weight: 500 !important; }
+                            .row-label-text { font-size: 5.5pt !important; width: 45pt !important; }
                         }
                     `}</style>
 
@@ -234,14 +237,14 @@
                             <div className="flex items-center gap-3">
                                 <div className="bg-slate-800 p-2 rounded-xl"><IconLayers /></div>
                                 <div>
-                                    <h1 className="text-xl font-bold">Rack Management Pro</h1>
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Disponibilidad Global</p>
+                                    <h1 className="text-xl font-bold tracking-tight">Rack Matrix Dual</h1>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Vista Parejas de Racks</p>
                                 </div>
                             </div>
 
                             {data.length > 0 && (
                                 <div className="flex items-center gap-6 bg-slate-900 text-white px-6 py-2 rounded-2xl border border-slate-700">
-                                    <div className="flex items-center gap-3"><IconGlobe /><span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">Total Almacén:</span></div>
+                                    <div className="flex items-center gap-3"><IconGlobe /><span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">Total Global:</span></div>
                                     <div className="flex gap-8">
                                         <div className="flex flex-col items-center"><span className="text-lg font-black text-emerald-400">{emptyLocations.size}</span><span className="text-[8px] uppercase text-slate-500">Vacíos</span></div>
                                         <div className="flex flex-col items-center"><span className="text-lg font-black text-red-400">{blockedLocations.size}</span><span className="text-[8px] uppercase text-slate-500">Bloqueos</span></div>
@@ -251,19 +254,24 @@
 
                             <div className="flex items-center gap-3">
                                 {!data.length ? (
-                                    <label className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl cursor-pointer flex items-center gap-2 text-sm font-bold shadow-md">
-                                        <IconUpload /> Cargar Excel
+                                    <label className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl cursor-pointer flex items-center gap-2 text-sm font-bold shadow-md">
+                                        <IconUpload /> Cargar Reporte
                                         <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
                                     </label>
                                 ) : (
                                     <>
                                         <button onClick={handlePrint} className="bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold shadow-md">
-                                            <IconPrinter /> Imprimir Rack
+                                            <IconPrinter /> Imprimir Pareja
                                         </button>
-                                        <select value={selectedRack} onChange={(e) => setSelectedRack(e.target.value)} className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2 font-bold text-sm">
-                                            {Array.from({ length: TOTAL_RACKS }).map((_, i) => {
-                                                const val = String(i + 1).padStart(2, '0');
-                                                return <option key={val} value={val}>RACK {val}</option>;
+                                        <select 
+                                            value={selectedPairStart} 
+                                            onChange={(e) => setSelectedPairStart(parseInt(e.target.value))} 
+                                            className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2 font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                        >
+                                            {Array.from({ length: TOTAL_RACKS / 2 }).map((_, i) => {
+                                                const start = i * 2 + 1;
+                                                const end = start + 1;
+                                                return <option key={start} value={start}>Racks {String(start).padStart(2, '0')} & {String(end).padStart(2, '0')}</option>;
                                             })}
                                         </select>
                                     </>
@@ -272,113 +280,121 @@
                         </div>
                     </header>
 
-                    <main className="w-full px-2 sm:px-6">
+                    <main className="w-full px-2 sm:px-4 space-y-8">
                         {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 flex items-center gap-2 no-print"><IconAlert /> {error}</div>}
 
-                        {data.length > 0 && (
-                            <div className="space-y-6">
-                                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden w-full matrix-container">
-                                    <div className="bg-slate-800 p-4 text-white flex justify-between items-center matrix-header no-print">
-                                        <h3 className="font-black text-lg uppercase tracking-tight">Matriz Rack {selectedRack}</h3>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 bg-red-600 rounded"></div>
-                                                <span className="text-[10px] font-bold uppercase">Bloqueo</span>
+                        {data.length > 0 && currentRacks.map(rackNum => {
+                            const isOdd = rackNum % 2 !== 0;
+                            const stats = getRackStats(rackNum);
+                            
+                            return (
+                                <div key={rackNum} className="space-y-4">
+                                    <div className="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden w-full matrix-container">
+                                        <div className="bg-slate-800 p-3 text-white flex justify-between items-center matrix-header">
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold text-sm">RACK {String(rackNum).padStart(2, '0')}</div>
+                                                <span className="text-[10px] font-medium uppercase opacity-60">
+                                                    Dirección: {isOdd ? 'Derecha ⮕ Izquierda' : 'Izquierda ⮕ Derecha'}
+                                                </span>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-3 h-3 bg-white border border-slate-300 rounded"></div>
-                                                <span className="text-[10px] font-bold uppercase">Vacío</span>
+                                            <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-wider no-print">
+                                                <div className="flex items-center gap-2"><div className="w-3 h-3 bg-white border border-slate-300 rounded-sm"></div>Vacío: {stats.rackEmpty}</div>
+                                                <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-600 rounded-sm"></div>Bloqueo: {stats.rackBlocked}</div>
+                                                <div className="flex items-center gap-2"><div className="w-3 h-3 bg-slate-200 rounded-sm"></div>Ocupado</div>
                                             </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div className="p-2 sm:p-4 bg-white">
-                                        <div className="flex w-full">
-                                            {/* Etiquetas de Fila (Vertical) */}
-                                            <div className="flex flex-col mr-2">
-                                                {VISUAL_ROWS.map((vRow, idx) => (
-                                                    <div key={idx} className={`h-full flex items-center justify-end pr-2 font-black text-[9px] sm:text-[10px] w-16 sm:w-24 border-r-2 mb-[2px] row-label-text ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
-                                                        {vRow.label}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            {/* Cuadrícula de Racks */}
-                                            <div className="matrix-grid-container flex-1">
-                                                {Array.from({ length: TOTAL_COLS }).map((_, colIdx) => {
-                                                    const colNum = colIdx + 1;
-                                                    return (
-                                                        <div key={colNum} className="matrix-column">
-                                                            {VISUAL_ROWS.map((vRow, rowIdx) => {
-                                                                const slotId = getSlotId(selectedRack, vRow.letter, colNum, vRow.depth);
-                                                                const isEmpty = emptyLocations.has(slotId);
-                                                                const isBlocked = blockedLocations.has(slotId);
-                                                                const isSearched = searchTerm && slotId.includes(searchTerm);
-                                                                
-                                                                return (
-                                                                    <div 
-                                                                        key={slotId} 
-                                                                        className={`matrix-slot ${isBlocked ? 'bg-red-600 slot-blocked' : isEmpty ? 'bg-white border-slate-200' : 'bg-slate-800 slot-occupied'} ${isSearched ? 'ring-2 ring-yellow-400 scale-105 z-10 shadow-lg' : ''}`}
-                                                                        title={slotId}
-                                                                    >
-                                                                        {isBlocked ? (
-                                                                            <div className="text-center text-white scale-75 sm:scale-100">
-                                                                                <IconShield />
-                                                                                <p className="text-[6px] sm:text-[8px] font-black leading-none mt-1 uppercase">NO OK</p>
-                                                                            </div>
-                                                                        ) : isEmpty ? (
-                                                                            <div className="text-center flex flex-col justify-center items-center">
-                                                                                <p className="text-[10px] sm:text-[14px] font-black leading-none text-slate-900 drop-shadow-sm slot-text-rack">{slotId.slice(0,3)}</p>
-                                                                                <p className="text-[10px] sm:text-[14px] font-black leading-none text-blue-700 drop-shadow-sm slot-text-pos">{slotId.slice(3)}</p>
-                                                                            </div>
-                                                                        ) : null}
-                                                                    </div>
-                                                                );
-                                                            })}
+                                        
+                                        <div className="p-2 sm:p-4 bg-white">
+                                            <div className="flex w-full">
+                                                <div className="flex flex-col mr-2">
+                                                    {VISUAL_ROWS.map((vRow, idx) => (
+                                                        <div key={idx} className={`h-full flex items-center justify-end pr-2 font-bold text-[9px] sm:text-[10px] w-16 sm:w-24 border-r-2 mb-[2px] row-label-text ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
+                                                            {vRow.label}
                                                         </div>
-                                                    );
-                                                })}
+                                                    ))}
+                                                </div>
+                                                
+                                                <div className="matrix-grid-container flex-1" style={{ flexDirection: isOdd ? 'row-reverse' : 'row' }}>
+                                                    {Array.from({ length: TOTAL_COLS }).map((_, colIdx) => {
+                                                        const colNum = colIdx + 1;
+                                                        return (
+                                                            <div key={colNum} className="matrix-column">
+                                                                {VISUAL_ROWS.map((vRow, rowIdx) => {
+                                                                    const slotId = getSlotId(rackNum, vRow.letter, colNum, vRow.depth);
+                                                                    const isEmpty = emptyLocations.has(slotId);
+                                                                    const isBlocked = blockedLocations.has(slotId);
+                                                                    const isSearched = searchTerm && slotId.includes(searchTerm);
+                                                                    
+                                                                    return (
+                                                                        <div 
+                                                                            key={slotId} 
+                                                                            className={`matrix-slot ${isBlocked ? 'bg-red-600 slot-blocked shadow-sm ring-1 ring-red-700' : isEmpty ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-200 slot-occupied'} ${isSearched ? 'ring-4 ring-yellow-400 scale-110 z-10 shadow-2xl' : ''}`}
+                                                                            title={slotId}
+                                                                        >
+                                                                            {isBlocked ? (
+                                                                                <div className="text-center text-white scale-75">
+                                                                                    <IconShield />
+                                                                                    <p className="text-[7px] font-medium mt-1 uppercase">NO OK</p>
+                                                                                </div>
+                                                                            ) : isEmpty ? (
+                                                                                <div className="text-center flex flex-col justify-center items-center">
+                                                                                    <p className="text-[12px] sm:text-[14px] font-medium leading-none text-slate-900 slot-text-rack">{slotId.slice(0,3)}</p>
+                                                                                    <p className="text-[12px] sm:text-[14px] font-medium leading-none text-blue-700 slot-text-pos">{slotId.slice(3)}</p>
+                                                                                </div>
+                                                                            ) : null}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                            );
+                        })}
 
-                                {/* Buscador y Resumen */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-200 flex flex-col justify-center">
-                                        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Localizar Ubicación</h3>
-                                        <div className="relative">
-                                            <input 
-                                                type="text" 
-                                                placeholder="Ej: 01A01A"
-                                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 font-bold text-lg focus:border-indigo-500 focus:bg-white outline-none transition-all uppercase"
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
-                                            />
-                                            <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300">
-                                                <IconLayers />
-                                            </div>
+                        {data.length > 0 && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print pt-6">
+                                <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-200">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Localizar Ubicación</h3>
+                                    <div className="relative">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Ej: 01A01A"
+                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 font-bold text-lg focus:border-indigo-500 focus:bg-white outline-none transition-all uppercase"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
+                                        />
+                                        <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300">
+                                            <IconLayers />
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-2xl">
-                                        <h3 className="text-xl font-black mb-6 flex items-center gap-3">
-                                            <span className="bg-indigo-600 p-2 rounded-lg">R{selectedRack}</span>
-                                            Resumen Rack Seleccionado
-                                        </h3>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
-                                                <p className="text-2xl font-black">1,128</p>
-                                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Capacidad</p>
-                                            </div>
-                                            <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 text-center">
-                                                <p className="text-2xl font-black text-emerald-400">{rackStats.rackEmpty}</p>
-                                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1">Vacíos</p>
-                                            </div>
-                                            <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 text-center">
-                                                <p className="text-2xl font-black text-red-400">{rackStats.rackBlocked}</p>
-                                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1">Bloqueos</p>
-                                            </div>
+                                <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-2xl flex flex-col justify-center">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-xl font-bold flex items-center gap-3">Resumen de Pareja</h3>
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase">R{currentRacks[0]} - R{currentRacks[1]}</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
+                                            <p className="text-2xl font-black">2,256</p>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Capacidad</p>
+                                        </div>
+                                        <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 text-center">
+                                            <p className="text-2xl font-black text-emerald-400">
+                                                {getRackStats(currentRacks[0]).rackEmpty + getRackStats(currentRacks[1]).rackEmpty}
+                                            </p>
+                                            <p className="text-[10px] text-slate-400 uppercase font-bold mt-1">Vacíos</p>
+                                        </div>
+                                        <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 text-center">
+                                            <p className="text-2xl font-black text-red-400">
+                                                {getRackStats(currentRacks[0]).rackBlocked + getRackStats(currentRacks[1]).rackBlocked}
+                                            </p>
+                                            <p className="text-[10px] text-slate-400 uppercase font-bold mt-1">Bloqueos</p>
                                         </div>
                                     </div>
                                 </div>
@@ -386,10 +402,9 @@
                         )}
                     </main>
                     
-                    {/* Indicador de Archivo Flotante */}
                     {data.length > 0 && (
-                        <div className="fixed bottom-6 left-6 bg-white px-6 py-3 rounded-2xl shadow-2xl border border-slate-200 no-print flex items-center gap-3 animate-bounce">
-                            <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                        <div className="fixed bottom-6 left-6 bg-white px-6 py-3 rounded-2xl shadow-2xl border border-slate-200 no-print flex items-center gap-3">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                             <span className="text-xs font-black text-slate-700 uppercase tracking-tight truncate max-w-[150px]">{fileName}</span>
                         </div>
                     )}
