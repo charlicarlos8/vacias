@@ -171,7 +171,7 @@
                         @media print {
                             @page { 
                                 size: letter landscape; 
-                                margin: 0; /* Controlamos márgenes con el body */
+                                margin: 0; 
                             }
                             header, .no-print, .legend-section, .summary-section, .floating-status, .upload-label, .search-section, button { 
                                 display: none !important; 
@@ -186,18 +186,20 @@
                                 justify-content: center !important;
                                 min-height: 100vh !important;
                                 height: 100vh !important;
+                                width: 100vw !important;
                             }
                             main {
                                 margin: 0 !important;
                                 padding: 5mm !important;
-                                width: 100% !important;
+                                width: 98% !important; /* Cubrir casi todo el ancho */
                                 display: flex !important;
                                 flex-direction: column !important;
                                 justify-content: center !important;
+                                align-items: center !important;
                             }
                             .matrix-container { 
                                 border: none !important;
-                                border-bottom: 1pt dashed #ccc !important;
+                                border-bottom: 0.5pt dashed #ccc !important;
                                 border-radius: 0 !important; 
                                 box-shadow: none !important;
                                 width: 100% !important;
@@ -217,18 +219,27 @@
                             .matrix-slot { border-radius: 0 !important; border: 0.1pt solid #eee !important; }
                             
                             .slot-occupied { 
-                                background-color: #f1f5f9 !important; /* Gris más tenue para impresión */
+                                background-color: #f1f5f9 !important; /* Gris tenue */
                                 -webkit-print-color-adjust: exact; 
                                 print-color-adjust: exact;
                             }
                             .slot-blocked { 
                                 background-color: #fee2e2 !important;
-                                border: 1pt solid #dc2626 !important;
+                                border: 0.5pt solid #dc2626 !important;
                                 -webkit-print-color-adjust: exact; 
                                 print-color-adjust: exact;
                             }
-                            .slot-text-rack, .slot-text-pos { font-size: 6.5pt !important; font-weight: 500 !important; }
-                            .row-label-text { font-size: 5.5pt !important; width: 45pt !important; }
+                            /* Estilo de fuentes sin negrita y tamaño adecuado para impresión */
+                            .slot-text-rack, .slot-text-pos { 
+                                font-size: 7.5pt !important; 
+                                font-weight: 400 !important; 
+                                color: #000 !important;
+                            }
+                            .row-label-text { 
+                                font-size: 6pt !important; 
+                                width: 45pt !important; 
+                                font-weight: 400 !important;
+                            }
                         }
                     `}</style>
 
@@ -288,7 +299,7 @@
                             const stats = getRackStats(rackNum);
                             
                             return (
-                                <div key={rackNum} className="space-y-4">
+                                <div key={rackNum} className="w-full space-y-4">
                                     <div className="bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden w-full matrix-container">
                                         <div className="bg-slate-800 p-3 text-white flex justify-between items-center matrix-header">
                                             <div className="flex items-center gap-4">
@@ -308,7 +319,7 @@
                                             <div className="flex w-full">
                                                 <div className="flex flex-col mr-2">
                                                     {VISUAL_ROWS.map((vRow, idx) => (
-                                                        <div key={idx} className={`h-full flex items-center justify-end pr-2 font-bold text-[9px] sm:text-[10px] w-16 sm:w-24 border-r-2 mb-[2px] row-label-text ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
+                                                        <div key={idx} className={`h-full flex items-center justify-end pr-2 font-medium text-[9px] sm:text-[10px] w-16 sm:w-24 border-r-2 mb-[2px] row-label-text ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
                                                             {vRow.label}
                                                         </div>
                                                     ))}
@@ -334,12 +345,12 @@
                                                                             {isBlocked ? (
                                                                                 <div className="text-center text-white scale-75">
                                                                                     <IconShield />
-                                                                                    <p className="text-[7px] font-medium mt-1 uppercase">NO OK</p>
+                                                                                    <p className="text-[7px] font-normal mt-1 uppercase">NO OK</p>
                                                                                 </div>
                                                                             ) : isEmpty ? (
                                                                                 <div className="text-center flex flex-col justify-center items-center">
-                                                                                    <p className="text-[12px] sm:text-[14px] font-medium leading-none text-slate-900 slot-text-rack">{slotId.slice(0,3)}</p>
-                                                                                    <p className="text-[12px] sm:text-[14px] font-medium leading-none text-blue-700 slot-text-pos">{slotId.slice(3)}</p>
+                                                                                    <p className="text-[12px] sm:text-[14px] font-normal leading-none text-slate-900 slot-text-rack">{slotId.slice(0,3)}</p>
+                                                                                    <p className="text-[12px] sm:text-[14px] font-normal leading-none text-blue-700 slot-text-pos">{slotId.slice(3)}</p>
                                                                                 </div>
                                                                             ) : null}
                                                                         </div>
