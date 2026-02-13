@@ -142,6 +142,30 @@
             return (
                 <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-10">
                     <style>{`
+                        /* Ajustes para evitar scroll horizontal y mejorar visibilidad */
+                        .matrix-grid-container {
+                            display: flex;
+                            flex-direction: row-reverse;
+                            width: 100%;
+                            gap: 2px;
+                        }
+                        .matrix-column {
+                            display: flex;
+                            flex-direction: column;
+                            flex: 1;
+                            min-width: 0;
+                            gap: 2px;
+                        }
+                        .matrix-slot {
+                            aspect-ratio: 1 / 1;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            border-radius: 4px;
+                            transition: all 0.2s;
+                            border: 1px solid transparent;
+                        }
+
                         @media print {
                             @page { 
                                 size: letter landscape; 
@@ -165,9 +189,9 @@
                                 border: 1px solid #ccc !important; 
                                 border-radius: 0 !important; 
                                 box-shadow: none !important;
-                                transform: scale(0.35); /* Ajuste dinámico para que 47 columnas quepan en horizontal */
+                                transform: scale(0.35);
                                 transform-origin: top left;
-                                width: 2850px !important; /* Ancho fijo aproximado para mantener la proporción antes del escalado */
+                                width: 2850px !important;
                                 page-break-inside: avoid;
                                 margin: 0 !important;
                             }
@@ -185,10 +209,6 @@
                             .slot-blocked { 
                                 background-color: #dc2626 !important; 
                                 -webkit-print-color-adjust: exact; 
-                                print-color-adjust: exact;
-                            }
-                            .matrix-label-print {
-                                -webkit-print-color-adjust: exact;
                                 print-color-adjust: exact;
                             }
                         }
@@ -237,42 +257,64 @@
                         </div>
                     </header>
 
-                    <main className="max-w-[1800px] mx-auto px-6">
+                    <main className="w-full px-2 sm:px-6">
                         {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 flex items-center gap-2 no-print"><IconAlert /> {error}</div>}
 
                         {data.length > 0 && (
                             <div className="space-y-6">
-                                <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden matrix-container">
-                                    <div className="bg-slate-800 p-6 text-white flex justify-between items-center matrix-header">
-                                        <h3 className="font-black text-xl uppercase">Matriz Rack {selectedRack}</h3>
-                                        <span className="text-[10px] opacity-50 uppercase tracking-widest">47 Columnas | 12 Niveles</span>
+                                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden w-full matrix-container">
+                                    <div className="bg-slate-800 p-4 text-white flex justify-between items-center matrix-header no-print">
+                                        <h3 className="font-black text-lg uppercase tracking-tight">Matriz Rack {selectedRack}</h3>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 bg-red-600 rounded"></div>
+                                                <span className="text-[10px] font-bold uppercase">Bloqueo</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 bg-white border border-slate-300 rounded"></div>
+                                                <span className="text-[10px] font-bold uppercase">Vacío</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="p-10 overflow-x-auto bg-white">
-                                        <div className="flex" style={{ width: 'fit-content' }}>
-                                            <div className="flex flex-col mr-4">
+                                    
+                                    <div className="p-2 sm:p-4 bg-white">
+                                        <div className="flex w-full">
+                                            {/* Etiquetas de Fila (Vertical) */}
+                                            <div className="flex flex-col mr-2">
                                                 {VISUAL_ROWS.map((vRow, idx) => (
-                                                    <div key={idx} className={`h-[56px] flex items-center justify-end pr-4 font-black text-[10px] w-28 border-r-2 mb-1.5 matrix-label-print ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
+                                                    <div key={idx} className={`h-full flex items-center justify-end pr-2 font-black text-[9px] sm:text-[10px] w-16 sm:w-24 border-r-2 mb-[2px] ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
                                                         {vRow.label}
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="flex flex-row-reverse">
+                                            
+                                            {/* Cuadrícula de Racks */}
+                                            <div className="matrix-grid-container flex-1">
                                                 {Array.from({ length: TOTAL_COLS }).map((_, colIdx) => {
                                                     const colNum = colIdx + 1;
                                                     return (
-                                                        <div key={colNum} className="flex flex-col">
+                                                        <div key={colNum} className="matrix-column">
                                                             {VISUAL_ROWS.map((vRow, rowIdx) => {
                                                                 const slotId = getSlotId(selectedRack, vRow.letter, colNum, vRow.depth);
                                                                 const isEmpty = emptyLocations.has(slotId);
                                                                 const isBlocked = blockedLocations.has(slotId);
+                                                                const isSearched = searchTerm && slotId.includes(searchTerm);
+                                                                
                                                                 return (
-                                                                    <div key={slotId} className={`w-[56px] h-[56px] border mb-1.5 ml-1.5 relative rounded-md flex items-center justify-center ${isBlocked ? 'bg-red-600 border-red-700 slot-blocked' : isEmpty ? 'bg-white border-slate-200' : 'bg-slate-800 border-slate-900 slot-occupied'}`}>
+                                                                    <div 
+                                                                        key={slotId} 
+                                                                        className={`matrix-slot ${isBlocked ? 'bg-red-600 slot-blocked' : isEmpty ? 'bg-white border-slate-200' : 'bg-slate-800 slot-occupied'} ${isSearched ? 'ring-2 ring-yellow-400 scale-105 z-10 shadow-lg' : ''}`}
+                                                                        title={slotId}
+                                                                    >
                                                                         {isBlocked ? (
-                                                                            <div className="text-center text-white"><IconShield /><p className="text-[6px] font-black">BLOQUEO</p></div>
+                                                                            <div className="text-center text-white scale-75 sm:scale-100">
+                                                                                <IconShield />
+                                                                                <p className="text-[6px] sm:text-[8px] font-black leading-none mt-1">NO OK</p>
+                                                                            </div>
                                                                         ) : isEmpty ? (
-                                                                            <div className="text-center">
-                                                                                <p className="text-[11px] font-black leading-none">{slotId.slice(0,3)}</p>
-                                                                                <p className="text-[11px] font-black text-blue-600 leading-none">{slotId.slice(3)}</p>
+                                                                            <div className="text-center flex flex-col justify-center items-center">
+                                                                                <p className="text-[10px] sm:text-[14px] font-black leading-none text-slate-900 drop-shadow-sm">{slotId.slice(0,3)}</p>
+                                                                                <p className="text-[10px] sm:text-[14px] font-black leading-none text-blue-700 drop-shadow-sm">{slotId.slice(3)}</p>
                                                                             </div>
                                                                         ) : null}
                                                                     </div>
@@ -286,17 +328,56 @@
                                     </div>
                                 </div>
 
-                                <div className="bg-slate-900 rounded-[2rem] p-8 text-white summary-section no-print">
-                                    <h3 className="text-xl font-black mb-6">Resumen Local: Rack {selectedRack}</h3>
-                                    <div className="grid grid-cols-3 gap-6">
-                                        <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700"><p className="text-2xl font-black">1,128</p><p className="text-[10px] text-slate-500 uppercase font-black">Espacios</p></div>
-                                        <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700"><p className="text-2xl font-black text-emerald-400">{rackStats.rackEmpty}</p><p className="text-[10px] text-slate-500 uppercase font-black">Vacíos</p></div>
-                                        <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700"><p className="text-2xl font-black text-red-400">{rackStats.rackBlocked}</p><p className="text-[10px] text-slate-500 uppercase font-black">Bloqueos</p></div>
+                                {/* Buscador y Resumen */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
+                                    <div className="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-200 flex flex-col justify-center">
+                                        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Localizar Ubicación</h3>
+                                        <div className="relative">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Ej: 01A01A"
+                                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 font-bold text-lg focus:border-indigo-500 focus:bg-white outline-none transition-all uppercase"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
+                                            />
+                                            <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300">
+                                                <IconLayers />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-2xl">
+                                        <h3 className="text-xl font-black mb-6 flex items-center gap-3">
+                                            <span className="bg-indigo-600 p-2 rounded-lg">R{selectedRack}</span>
+                                            Resumen Rack Seleccionado
+                                        </h3>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
+                                                <p className="text-2xl font-black">1,128</p>
+                                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Capacidad</p>
+                                            </div>
+                                            <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 text-center">
+                                                <p className="text-2xl font-black text-emerald-400">{rackStats.rackEmpty}</p>
+                                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1">Vacíos</p>
+                                            </div>
+                                            <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 text-center">
+                                                <p className="text-2xl font-black text-red-400">{rackStats.rackBlocked}</p>
+                                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1">Bloqueos</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         )}
                     </main>
+                    
+                    {/* Indicador de Archivo Flotante */}
+                    {data.length > 0 && (
+                        <div className="fixed bottom-6 left-6 bg-white px-6 py-3 rounded-2xl shadow-2xl border border-slate-200 no-print flex items-center gap-3 animate-bounce">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                            <span className="text-xs font-black text-slate-700 uppercase tracking-tight truncate max-w-[150px]">{fileName}</span>
+                        </div>
+                    )}
                 </div>
             );
         }
