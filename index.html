@@ -142,7 +142,7 @@
             return (
                 <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-10">
                     <style>{`
-                        /* Ajustes para evitar scroll horizontal y mejorar visibilidad */
+                        /* Ajustes de visualización en pantalla */
                         .matrix-grid-container {
                             display: flex;
                             flex-direction: row-reverse;
@@ -166,10 +166,11 @@
                             border: 1px solid transparent;
                         }
 
+                        /* Formato optimizado para impresión tamaño carta */
                         @media print {
                             @page { 
                                 size: letter landscape; 
-                                margin: 5mm; 
+                                margin: 2mm; 
                             }
                             header, .no-print, .legend-section, .summary-section, .floating-status, .upload-label, .search-section, button { 
                                 display: none !important; 
@@ -182,24 +183,34 @@
                             main {
                                 margin: 0 !important;
                                 padding: 0 !important;
-                                width: 100% !important;
+                                width: 100vw !important;
                                 max-width: none !important;
                             }
                             .matrix-container { 
-                                border: 1px solid #ccc !important; 
+                                border: none !important;
                                 border-radius: 0 !important; 
                                 box-shadow: none !important;
-                                transform: scale(0.35);
-                                transform-origin: top left;
-                                width: 2850px !important;
-                                page-break-inside: avoid;
+                                width: 100% !important;
                                 margin: 0 !important;
+                                page-break-inside: avoid;
                             }
                             .matrix-header { 
                                 background-color: #1e293b !important; 
                                 color: white !important; 
+                                padding: 8px !important;
+                                border-bottom: 2px solid #000 !important;
                                 -webkit-print-color-adjust: exact; 
                                 print-color-adjust: exact;
+                            }
+                            .matrix-grid-container {
+                                gap: 1px !important;
+                            }
+                            .matrix-column {
+                                gap: 1px !important;
+                            }
+                            .matrix-slot {
+                                border-radius: 0 !important;
+                                border: 0.1pt solid #ddd !important;
                             }
                             .slot-occupied { 
                                 background-color: #1e293b !important; 
@@ -211,6 +222,10 @@
                                 -webkit-print-color-adjust: exact; 
                                 print-color-adjust: exact;
                             }
+                            /* Ajuste de fuentes para impresión compacta */
+                            .slot-text-rack { font-size: 7pt !important; }
+                            .slot-text-pos { font-size: 7pt !important; }
+                            .row-label-text { font-size: 6pt !important; width: 45pt !important; }
                         }
                     `}</style>
 
@@ -282,7 +297,7 @@
                                             {/* Etiquetas de Fila (Vertical) */}
                                             <div className="flex flex-col mr-2">
                                                 {VISUAL_ROWS.map((vRow, idx) => (
-                                                    <div key={idx} className={`h-full flex items-center justify-end pr-2 font-black text-[9px] sm:text-[10px] w-16 sm:w-24 border-r-2 mb-[2px] ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
+                                                    <div key={idx} className={`h-full flex items-center justify-end pr-2 font-black text-[9px] sm:text-[10px] w-16 sm:w-24 border-r-2 mb-[2px] row-label-text ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
                                                         {vRow.label}
                                                     </div>
                                                 ))}
@@ -309,12 +324,12 @@
                                                                         {isBlocked ? (
                                                                             <div className="text-center text-white scale-75 sm:scale-100">
                                                                                 <IconShield />
-                                                                                <p className="text-[6px] sm:text-[8px] font-black leading-none mt-1">NO OK</p>
+                                                                                <p className="text-[6px] sm:text-[8px] font-black leading-none mt-1 uppercase">NO OK</p>
                                                                             </div>
                                                                         ) : isEmpty ? (
                                                                             <div className="text-center flex flex-col justify-center items-center">
-                                                                                <p className="text-[10px] sm:text-[14px] font-black leading-none text-slate-900 drop-shadow-sm">{slotId.slice(0,3)}</p>
-                                                                                <p className="text-[10px] sm:text-[14px] font-black leading-none text-blue-700 drop-shadow-sm">{slotId.slice(3)}</p>
+                                                                                <p className="text-[10px] sm:text-[14px] font-black leading-none text-slate-900 drop-shadow-sm slot-text-rack">{slotId.slice(0,3)}</p>
+                                                                                <p className="text-[10px] sm:text-[14px] font-black leading-none text-blue-700 drop-shadow-sm slot-text-pos">{slotId.slice(3)}</p>
                                                                             </div>
                                                                         ) : null}
                                                                     </div>
