@@ -143,17 +143,58 @@
                 <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-10">
                     <style>{`
                         @media print {
-                            header, .no-print, .legend-section, .summary-section, .floating-status, .upload-label, .search-section, button { display: none !important; }
-                            body, .min-h-screen { background-color: white !important; }
-                            .matrix-container { border: 1px solid #000 !important; border-radius: 0 !important; width: 100% !important; }
-                            .matrix-header { background-color: #1e293b !important; color: white !important; -webkit-print-color-adjust: exact; }
-                            .slot-occupied { background-color: #1e293b !important; -webkit-print-color-adjust: exact; }
-                            .slot-blocked { background-color: #dc2626 !important; -webkit-print-color-adjust: exact; }
-                            @page { size: landscape; margin: 0.5cm; }
+                            @page { 
+                                size: letter landscape; 
+                                margin: 5mm; 
+                            }
+                            header, .no-print, .legend-section, .summary-section, .floating-status, .upload-label, .search-section, button { 
+                                display: none !important; 
+                            }
+                            body, .min-h-screen { 
+                                background-color: white !important; 
+                                margin: 0 !important;
+                                padding: 0 !important;
+                            }
+                            main {
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                width: 100% !important;
+                                max-width: none !important;
+                            }
+                            .matrix-container { 
+                                border: 1px solid #ccc !important; 
+                                border-radius: 0 !important; 
+                                box-shadow: none !important;
+                                transform: scale(0.35); /* Ajuste dinámico para que 47 columnas quepan en horizontal */
+                                transform-origin: top left;
+                                width: 2850px !important; /* Ancho fijo aproximado para mantener la proporción antes del escalado */
+                                page-break-inside: avoid;
+                                margin: 0 !important;
+                            }
+                            .matrix-header { 
+                                background-color: #1e293b !important; 
+                                color: white !important; 
+                                -webkit-print-color-adjust: exact; 
+                                print-color-adjust: exact;
+                            }
+                            .slot-occupied { 
+                                background-color: #1e293b !important; 
+                                -webkit-print-color-adjust: exact; 
+                                print-color-adjust: exact;
+                            }
+                            .slot-blocked { 
+                                background-color: #dc2626 !important; 
+                                -webkit-print-color-adjust: exact; 
+                                print-color-adjust: exact;
+                            }
+                            .matrix-label-print {
+                                -webkit-print-color-adjust: exact;
+                                print-color-adjust: exact;
+                            }
                         }
                     `}</style>
 
-                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-md p-4 mb-6">
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-md p-4 mb-6 no-print">
                         <div className="max-w-[1800px] mx-auto flex flex-col lg:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="bg-slate-800 p-2 rounded-xl"><IconLayers /></div>
@@ -181,8 +222,8 @@
                                     </label>
                                 ) : (
                                     <>
-                                        <button onClick={handlePrint} className="bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold shadow-md no-print">
-                                            <IconPrinter /> Imprimir
+                                        <button onClick={handlePrint} className="bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold shadow-md">
+                                            <IconPrinter /> Imprimir Rack
                                         </button>
                                         <select value={selectedRack} onChange={(e) => setSelectedRack(e.target.value)} className="bg-slate-100 border border-slate-200 rounded-lg px-4 py-2 font-bold text-sm">
                                             {Array.from({ length: TOTAL_RACKS }).map((_, i) => {
@@ -197,7 +238,7 @@
                     </header>
 
                     <main className="max-w-[1800px] mx-auto px-6">
-                        {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 flex items-center gap-2"><IconAlert /> {error}</div>}
+                        {error && <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 flex items-center gap-2 no-print"><IconAlert /> {error}</div>}
 
                         {data.length > 0 && (
                             <div className="space-y-6">
@@ -210,7 +251,7 @@
                                         <div className="flex" style={{ width: 'fit-content' }}>
                                             <div className="flex flex-col mr-4">
                                                 {VISUAL_ROWS.map((vRow, idx) => (
-                                                    <div key={idx} className={`h-[56px] flex items-center justify-end pr-4 font-black text-[10px] w-28 border-r-2 mb-1.5 ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
+                                                    <div key={idx} className={`h-[56px] flex items-center justify-end pr-4 font-black text-[10px] w-28 border-r-2 mb-1.5 matrix-label-print ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200' : 'text-slate-400 border-slate-100'}`}>
                                                         {vRow.label}
                                                     </div>
                                                 ))}
@@ -245,7 +286,7 @@
                                     </div>
                                 </div>
 
-                                <div className="bg-slate-900 rounded-[2rem] p-8 text-white summary-section">
+                                <div className="bg-slate-900 rounded-[2rem] p-8 text-white summary-section no-print">
                                     <h3 className="text-xl font-black mb-6">Resumen Local: Rack {selectedRack}</h3>
                                     <div className="grid grid-cols-3 gap-6">
                                         <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700"><p className="text-2xl font-black">1,128</p><p className="text-[10px] text-slate-500 uppercase font-black">Espacios</p></div>
