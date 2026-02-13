@@ -1,0 +1,454 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Upload, Map as MapIcon, Info, Search, Loader2, AlertCircle, Database, Layers, ShieldAlert, LayoutGrid, Globe, Printer } from 'lucide-react';
+
+export default function App() {
+  const [data, setData] = useState([]);
+  const [emptyLocations, setEmptyLocations] = useState(new Set());
+  const [blockedLocations, setBlockedLocations] = useState(new Set());
+  const [libLoaded, setLibLoaded] = useState(false);
+  const [error, setError] = useState(null);
+  const [fileName, setFileName] = useState('');
+  
+  // Navigation state
+  const [selectedRack, setSelectedRack] = useState('01');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Dimensions
+  const TOTAL_RACKS = 20;
+  const TOTAL_COLS = 47;
+  const ROW_LETTERS = ['F', 'E', 'D', 'C', 'B', 'A']; // F is top, A is bottom
+  const DEPTHS = ['B', 'A']; // B is Back, A is Front
+
+  const VISUAL_ROWS = useMemo(() => {
+    const rows = [];
+    ROW_LETTERS.forEach(letter => {
+      rows.push({ letter, depth: 'B', label: `${letter}-Atrás` });
+      rows.push({ letter, depth: 'A', label: `${letter}-Frente` });
+    });
+    return rows;
+  }, []);
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+    script.async = true;
+    script.onload = () => setLibLoaded(true);
+    script.onerror = () => setError('Error al cargar el motor de procesamiento Excel.');
+    document.head.appendChild(script);
+  }, []);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file || !libLoaded) return;
+
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = window.XLSX.read(bstr, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const jsonData = window.XLSX.utils.sheet_to_json(ws);
+
+        if (jsonData.length > 0) {
+          const empty = new Set();
+          const blocked = new Set();
+
+          jsonData.forEach(row => {
+            const loc = row['Ubicación'] || row['UBICACIÓN'] || row['ubicación'];
+            if (!loc) return;
+            
+            const normalizedLoc = String(loc).trim().toUpperCase();
+            const isBlockedVal = row['Bloqueo de entradas'] || row['BLOQUEO DE ENTRADAS'];
+            
+            if (isBlockedVal && String(isBlockedVal).trim().toUpperCase() === 'X') {
+              blocked.add(normalizedLoc);
+            } else {
+              empty.add(normalizedLoc);
+            }
+          });
+          
+          setEmptyLocations(empty);
+          setBlockedLocations(blocked);
+          setData(jsonData);
+          setError(null);
+        } else {
+          setError('El archivo no contiene registros válidos.');
+        }
+      } catch (err) {
+        setError('Error al procesar el archivo. Asegúrate de que las columnas "Ubicación" y "Bloqueo de entradas" existan.');
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const getSlotId = (rack, row, col, depth) => {
+    const rackStr = String(rack).padStart(2, '0');
+    const colStr = String(col).padStart(2, '0');
+    return `${rackStr}${row}${colStr}${depth}`;
+  };
+
+  // Stats for the SELECTED rack
+  const rackStats = useMemo(() => {
+    const emptyArray = Array.from(emptyLocations);
+    const blockedArray = Array.from(blockedLocations);
+    
+    const rackEmpty = emptyArray.filter(loc => loc.startsWith(selectedRack)).length;
+    const rackBlocked = blockedArray.filter(loc => loc.startsWith(selectedRack)).length;
+    
+    return { rackEmpty, rackBlocked };
+  }, [emptyLocations, blockedLocations, selectedRack]);
+
+  // Direct print function without delay to avoid browser blocking
+  const handlePrint = () => {
+    window.print();
+  };
+
+  if (!libLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <p className="text-slate-600 font-medium font-sans text-lg">Iniciando Rack Management Pro...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-10">
+      <style>{`
+        @media print {
+          /* Force color visibility in browsers */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* Hide UI that is not useful on paper */
+          header, 
+          .no-print, 
+          .legend-section, 
+          .summary-section,
+          .floating-status,
+          .upload-label,
+          .search-section,
+          button,
+          nav {
+            display: none !important;
+          }
+
+          body, .min-h-screen {
+            background-color: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+
+          .matrix-container {
+            border: 1px solid #000 !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            width: 100% !important;
+            page-break-inside: avoid;
+            margin: 0 !important;
+          }
+
+          .matrix-header {
+            background-color: #1e293b !important;
+            color: white !important;
+            padding: 10px !important;
+          }
+
+          .slot-occupied {
+            background-color: #1e293b !important;
+          }
+
+          .slot-blocked {
+            background-color: #dc2626 !important;
+          }
+
+          .slot-empty {
+            background-color: white !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+
+          .matrix-text-label {
+            color: #000 !important;
+            font-weight: bold !important;
+          }
+
+          @page {
+            size: landscape;
+            margin: 0.5cm;
+          }
+        }
+      `}</style>
+
+      {/* Header Superior */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-md">
+        <div className="max-w-[1800px] mx-auto px-6 py-3">
+          <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-slate-800 p-2.5 rounded-xl shadow-lg">
+                <Layers className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">Rack Management Pro</h1>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Visor de Disponibilidad Global</p>
+              </div>
+            </div>
+
+            {/* Global Stats */}
+            {data.length > 0 && (
+              <div className="flex items-center gap-6 bg-slate-900 text-white px-6 py-2 rounded-2xl shadow-inner border border-slate-700">
+                <div className="flex items-center gap-3">
+                  <Globe className="w-4 h-4 text-blue-400" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total General:</span>
+                </div>
+                <div className="flex gap-8">
+                  <div className="flex flex-col items-center">
+                    <span className="text-lg font-black text-emerald-400 leading-none">{emptyLocations.size}</span>
+                    <span className="text-[8px] font-bold uppercase text-slate-500">Vacíos</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-lg font-black text-red-400 leading-none">{blockedLocations.size}</span>
+                    <span className="text-[8px] font-bold uppercase text-slate-500">Bloqueos</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              {!data.length ? (
+                <label className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl cursor-pointer flex items-center gap-2 text-sm font-bold transition-all shadow-md active:scale-95 upload-label">
+                  <Upload className="w-4 h-4" />
+                  Cargar Archivo Excel
+                  <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} />
+                </label>
+              ) : (
+                <>
+                  <button 
+                    onClick={handlePrint}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95 no-print"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Imprimir Rack
+                  </button>
+                  <div className="flex items-center gap-3 bg-slate-100 p-2 rounded-xl border border-slate-200">
+                    <span className="text-xs font-black text-slate-400 pl-2">RACK SELECCIONADO:</span>
+                    <select 
+                      value={selectedRack}
+                      onChange={(e) => setSelectedRack(e.target.value)}
+                      className="bg-white border border-slate-200 text-sm font-black rounded-lg px-4 py-1.5 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                    >
+                      {Array.from({ length: TOTAL_RACKS }).map((_, i) => {
+                        const val = String(i + 1).padStart(2, '0');
+                        return <option key={val} value={val}>RACK {val}</option>;
+                      })}
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-[1800px] mx-auto p-4 md:p-6">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 p-4 rounded-2xl flex items-center gap-3 text-red-700 shadow-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm font-semibold">{error}</p>
+          </div>
+        )}
+
+        {!data.length ? (
+          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 shadow-sm text-center px-4">
+            <div className="bg-slate-50 p-8 rounded-full mb-6">
+              <Database className="w-16 h-16 text-slate-300" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Sistema de Control de Ubicaciones</h2>
+            <p className="text-slate-500 mt-3 max-w-sm font-medium">
+              Sube el archivo Excel para analizar el estado de los 20 racks y generar mapas imprimibles.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Legend & Search */}
+            <div className="flex flex-col md:flex-row gap-6 items-end no-print">
+              <div className="flex-1 bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-wrap gap-8 items-center legend-section">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded bg-slate-800"></div>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Ocupado</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded border border-slate-300 bg-white shadow-sm"></div>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Vacío (Disponible)</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded bg-red-600 shadow-sm"></div>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Bloqueo de Entrada</span>
+                </div>
+              </div>
+
+              <div className="w-full md:w-80 bg-white p-6 rounded-3xl shadow-sm border border-slate-200 search-section">
+                <div className="flex items-center gap-3 border-b-2 border-slate-100 focus-within:border-blue-500 transition-all">
+                  <Search className="w-5 h-5 text-slate-300" />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar ubicación..."
+                    className="w-full text-sm font-bold bg-transparent outline-none pb-1 uppercase"
+                    onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Matrix Visualizer */}
+            <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden matrix-container">
+              <div className="bg-slate-800 px-8 py-5 text-white flex justify-between items-center matrix-header">
+                 <div className="flex items-center gap-3">
+                    <LayoutGrid className="w-5 h-5 text-blue-400 no-print" />
+                    <h3 className="font-black text-xl tracking-tight uppercase">Matriz Rack {selectedRack}</h3>
+                 </div>
+                 <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-black tracking-[0.3em] opacity-50 uppercase">Profundidad Dual (12 Niveles)</span>
+                 </div>
+              </div>
+
+              <div className="p-6 md:p-10 overflow-x-auto bg-white">
+                <div className="flex" style={{ width: 'fit-content' }}>
+                  {/* Visual Row Headers */}
+                  <div className="flex flex-col mr-4">
+                    {VISUAL_ROWS.map((vRow, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`h-[56px] flex items-center justify-end pr-4 font-black text-[10px] w-28 border-r-2 mb-1.5 transition-colors
+                          ${vRow.depth === 'A' ? 'text-blue-600 border-blue-200 bg-blue-50/30' : 'text-slate-400 border-slate-100 bg-slate-50/30'} rounded-l-xl`}
+                      >
+                        {vRow.label}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* The Grid */}
+                  <div className="flex flex-row-reverse">
+                    {Array.from({ length: TOTAL_COLS }).map((_, colIdx) => {
+                      const colNum = colIdx + 1;
+                      return (
+                        <div key={colNum} className="flex flex-col">
+                          {VISUAL_ROWS.map((vRow, rowIdx) => {
+                            const slotId = getSlotId(selectedRack, vRow.letter, colNum, vRow.depth);
+                            const isEmpty = emptyLocations.has(slotId);
+                            const isBlocked = blockedLocations.has(slotId);
+                            const isSelected = searchTerm && slotId === searchTerm;
+
+                            return (
+                              <div 
+                                key={slotId}
+                                className={`
+                                  w-[56px] h-[56px] border mb-1.5 ml-1.5 relative group transition-all duration-200
+                                  ${isSelected ? 'z-30 scale-125 ring-4 ring-orange-500 shadow-2xl rounded-lg' : 'rounded-md shadow-sm'}
+                                  ${isBlocked 
+                                    ? 'bg-red-600 border-red-700 slot-blocked' 
+                                    : isEmpty 
+                                      ? 'bg-white border-slate-200 slot-empty' 
+                                      : 'bg-slate-800 border-slate-900 slot-occupied'}
+                                `}
+                              >
+                                <div className="absolute inset-0 flex flex-col items-center justify-center p-0.5 pointer-events-none">
+                                  {isBlocked ? (
+                                    <div className="flex flex-col items-center">
+                                      <ShieldAlert className="w-4 h-4 text-white/80 mb-0.5 no-print" />
+                                      <span className="text-[8px] text-white font-black leading-none text-center uppercase">BLOQUEO</span>
+                                    </div>
+                                  ) : isEmpty ? (
+                                    <div className="flex flex-col items-center">
+                                       <span className="text-[11px] text-slate-900 font-black leading-none matrix-text-label">{slotId.slice(0,3)}</span>
+                                       <span className="text-[11px] text-blue-600 font-black leading-none matrix-text-label">{slotId.slice(3)}</span>
+                                       <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1 hidden print:block"></div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 no-print">
+              <div className="bg-blue-50 rounded-[2rem] p-8 border border-blue-100 shadow-sm">
+                <h4 className="font-black text-blue-900 text-base flex items-center gap-2 mb-4">
+                  <Info className="w-5 h-5" /> Guía Operativa
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm text-blue-800">
+                  <div className="bg-white/50 p-4 rounded-2xl">
+                    <p className="font-bold mb-1">Ubicaciones Vacías</p>
+                    <p className="text-xs opacity-80">Identificables por su fondo blanco y código visible.</p>
+                  </div>
+                  <div className="bg-white/50 p-4 rounded-2xl">
+                    <p className="font-bold mb-1">Impresión</p>
+                    <p className="text-xs opacity-80">El botón "Imprimir Rack" activará el diálogo del sistema.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary table */}
+              <div className="bg-slate-900 rounded-[2rem] p-8 text-white flex flex-col justify-center shadow-2xl relative overflow-hidden summary-section">
+                <div className="absolute -right-10 -top-10 opacity-10">
+                   <LayoutGrid className="w-48 h-48 text-white" />
+                </div>
+                <div className="flex justify-between items-center mb-6 relative z-10">
+                   <div>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Resumen Local</p>
+                     <h3 className="text-2xl font-black text-white">Rack {selectedRack}</h3>
+                   </div>
+                </div>
+                <div className="grid grid-cols-3 gap-6 relative z-10">
+                   <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+                      <p className="text-2xl font-black text-white">1,128</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-black mt-1">Total</p>
+                   </div>
+                   <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+                      <p className="text-2xl font-black text-emerald-400">{rackStats.rackEmpty}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-black mt-1">Vacíos</p>
+                   </div>
+                   <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
+                      <p className="text-2xl font-black text-red-400">{rackStats.rackBlocked}</p>
+                      <p className="text-[10px] text-slate-500 uppercase font-black mt-1">Bloqueos</p>
+                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Floating Status */}
+      {data.length > 0 && (
+        <div className="fixed bottom-6 right-6 flex items-center gap-4 bg-white px-6 py-4 rounded-[1.5rem] shadow-2xl border border-slate-200 z-[100] transition-all no-print floating-status">
+          <div className="flex flex-col">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Archivo</p>
+            <p className="text-sm font-bold text-slate-700 max-w-[150px] truncate">{fileName}</p>
+          </div>
+          <button 
+            onClick={() => {setData([]); setEmptyLocations(new Set()); setBlockedLocations(new Set()); setFileName('');}}
+            className="p-3 bg-red-50 hover:bg-red-500 hover:text-white text-red-500 rounded-2xl transition-all border border-red-100"
+          >
+            <AlertCircle className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
