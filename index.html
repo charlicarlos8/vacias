@@ -164,7 +164,7 @@
             return (
                 <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-10">
                     <style>{`
-                        /* Reglas para centrar verticalmente la impresión y abarcar el ancho */
+                        /* Reglas para optimizar la hoja de impresión (Carta Horizontal) */
                         @media print {
                             @page { 
                                 size: letter landscape; 
@@ -174,37 +174,53 @@
                                 -webkit-print-color-adjust: exact !important; 
                                 print-color-adjust: exact !important; 
                                 background-color: white !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
                             }
-                            header, .no-print { 
+                            /* Ocultar elementos innecesarios */
+                            header, .no-print, .matrix-header-screen { 
                                 display: none !important; 
                             }
                             main {
-                                display: flex !important;
-                                flex-direction: column !important;
-                                justify-content: center !important;
-                                min-height: 100vh !important;
+                                display: block !important;
                                 width: 100% !important;
                                 margin: 0 !important;
                                 padding: 0 !important;
                                 max-width: none !important;
                             }
+                            /* Un rack por página y centrado */
                             .matrix-container { 
-                                border: 1px solid #cbd5e1 !important;
-                                border-radius: 0 !important; 
-                                box-shadow: none !important;
-                                width: 100% !important;
-                                margin-bottom: 8mm !important;
+                                page-break-after: always;
                                 page-break-inside: avoid;
+                                width: 100% !important;
+                                margin: 0 auto !important;
+                                padding: 0 !important;
                             }
-                            .matrix-header { 
-                                background-color: #1e293b !important; 
-                                color: white !important; 
-                                border-bottom: 1px solid #1e293b !important;
+                            /* Limpieza del contenedor visual */
+                            .print-grid-wrapper {
+                                border: none !important;
+                                box-shadow: none !important;
+                                border-radius: 0 !important;
+                                padding: 0 !important;
+                            }
+                            /* Encabezado limpio solo para impresión */
+                            .print-header {
+                                display: flex !important;
+                                justify-content: space-between;
+                                align-items: center;
+                                border-bottom: 2px solid #000;
+                                padding-bottom: 10px;
+                                margin-bottom: 15px;
+                            }
+                            .print-header h2 {
+                                font-size: 16pt !important;
+                                font-weight: bold !important;
+                                color: #000 !important;
+                                margin: 0 !important;
                             }
                             .matrix-slot { 
-                                border: 1px solid #e2e8f0 !important; 
+                                border: 1px solid #cbd5e1 !important; 
                             }
-                            /* Mantener fondo oscuro en ocupados para que iguale a la pantalla */
                             .slot-occupied { 
                                 background-color: #e2e8f0 !important; 
                             }
@@ -214,13 +230,14 @@
                             /* Fuentes ajustadas para impresión nítida */
                             .slot-text-rack, .slot-text-pos { 
                                 font-size: 14pt !important; 
-                                font-weight: 500 !important; /* Medium weight */
+                                font-weight: 500 !important;
                                 color: #0f172a !important;
                             }
                             .row-label-text { 
                                 font-size: 9pt !important; 
                                 width: 60pt !important; 
                                 font-weight: 500 !important;
+                                color: #000 !important;
                             }
                         }
                     `}</style>
@@ -291,18 +308,25 @@
                             }
 
                             return (
-                                <div key={rackNum} className="w-full space-y-4 matrix-container">
-                                    <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden w-full h-full flex flex-col">
+                                <div key={rackNum} className="w-full matrix-container">
+                                    
+                                    {/* Encabezado Limpio EXCLUSIVO para la Impresión */}
+                                    <div className="print-header hidden">
+                                        <h2>RACK {String(rackNum).padStart(2, '0')}</h2>
+                                        <h2>TOTAL VACÍAS: {stats.rackEmpty}</h2>
+                                    </div>
+
+                                    <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden w-full h-full flex flex-col print-grid-wrapper">
                                         
-                                        {/* Cabecera del Rack */}
-                                        <div className="bg-slate-800 p-4 text-white flex justify-between items-center matrix-header">
+                                        {/* Cabecera del Rack en Pantalla (Oculta al imprimir) */}
+                                        <div className="bg-slate-800 p-4 text-white flex justify-between items-center matrix-header-screen">
                                             <div className="flex items-center gap-4">
                                                 <div className="bg-indigo-500 text-white px-4 py-1.5 rounded-xl font-medium text-base tracking-tight shadow-lg shadow-indigo-500/20">RACK {String(rackNum).padStart(2, '0')}</div>
                                                 <span className="text-[10px] font-medium uppercase opacity-60 tracking-wider">
                                                     Dirección: {isOdd ? 'Derecha ⮕ Izquierda' : 'Izquierda ⮕ Derecha'}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-8 text-[10px] font-medium uppercase tracking-widest no-print">
+                                            <div className="flex items-center gap-8 text-[10px] font-medium uppercase tracking-widest">
                                                 <div className="flex items-center gap-2.5"><div className="w-3.5 h-3.5 bg-white border border-slate-200 rounded shadow-sm"></div>Vacío: {stats.rackEmpty}</div>
                                                 <div className="flex items-center gap-2.5"><div className="w-3.5 h-3.5 bg-red-600 rounded shadow-sm"></div>Bloqueo: {stats.rackBlocked}</div>
                                                 <div className="flex items-center gap-2.5"><div className="w-3.5 h-3.5 bg-slate-200 rounded shadow-sm"></div>Ocupado</div>
@@ -310,13 +334,13 @@
                                         </div>
                                         
                                         {/* Área del Mapa Dinámica */}
-                                        <div className="p-4 sm:p-6 bg-white flex-1">
+                                        <div className="p-4 sm:p-6 bg-white flex-1 print:p-0">
                                             <div className="flex w-full h-full">
                                                 
                                                 {/* Eje Y: Etiquetas de Fila y Profundidad */}
                                                 <div className="flex flex-col mr-3 shrink-0 gap-[2px]">
                                                     {visualRows.map((vRow, idx) => (
-                                                        <div key={idx} className={`flex-1 min-h-[60px] flex items-center justify-end pr-3 font-medium text-[11px] w-20 sm:w-28 border-r row-label-text ${vRow.depth === 'A' ? 'text-indigo-600 border-indigo-100' : 'text-slate-400 border-slate-100'}`}>
+                                                        <div key={idx} className={`flex-1 min-h-[60px] flex items-center justify-end pr-3 font-medium text-[11px] w-20 sm:w-28 border-r row-label-text ${vRow.depth === 'A' ? 'text-indigo-600 border-indigo-100 print:border-black' : 'text-slate-400 border-slate-100 print:border-black'}`}>
                                                             {vRow.label}
                                                         </div>
                                                     ))}
@@ -345,7 +369,6 @@
                                                                                 </div>
                                                                             ) : isEmpty ? (
                                                                                 <div className="text-center flex flex-col justify-center items-center">
-                                                                                    {/* Fuente Aumentada y peso Medium */}
                                                                                     <p className="text-[14px] sm:text-[16px] font-medium leading-tight text-slate-900 slot-text-rack">{slotId.slice(0,3)}</p>
                                                                                     <p className="text-[14px] sm:text-[16px] font-medium leading-tight text-indigo-700 slot-text-pos">{slotId.slice(3)}</p>
                                                                                 </div>
